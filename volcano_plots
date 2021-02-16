@@ -1,0 +1,16 @@
+install.packages("gdata")
+install.packages("gplots")
+library(gdata)
+library(gplots)
+
+data=read.delim("demodata.txt",sep="\t")
+head (data)
+
+df <-as.data.frame(data)
+
+head (data)
+png(filename = "Volcanoplot.png")
+with(df, plot(Fold_.T1D.B1.vs.C1., -log10(pValue), pch=20, main="Volcano plot", xlim=c(-2.5,2)))
+with(subset(df, pValue <.05 & Fold_.T1D.B1.vs.C1. > 0.8), points(Fold_.T1D.B1.vs.C1., -log10(pValue), pch=20, col="red"))
+with(subset(df, pValue <.05 & Fold_.T1D.B1.vs.C1. < -0.8), points(Fold_.T1D.B1.vs.C1., -log10(pValue), pch=20, col="green"))
+dev.off()
