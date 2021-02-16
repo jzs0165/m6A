@@ -1,0 +1,14 @@
+library(ggplot2)
+data(mpg, package="ggplot2")
+m6A_log <- read.csv("pos_cont_vis.csv", header= TRUE)
+
+# Scatterplot
+theme_set(theme_bw())  # pre-set the bw theme.
+g <- ggplot(m6A_log, aes(Location, Frequency), inherit.aes = FALSE)
+g + geom_count(col="blue", show.legend=F) +
+  xlim(0, 1077) + 
+  labs(subtitle="m6A modifications on PAN RNA, positive control", 
+       y="Frequency", 
+       x="Location", 
+       title="N6-methyladenosine modifications discovered through 4SedTTP-seq")
+
