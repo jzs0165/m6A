@@ -1,0 +1,749 @@
+#!/usr/bin/Rscript
+
+#install.packages("dplyr..... etc")
+library("dplyr")
+#library("xlsx")
+library(ggplot2)
+#library(d3heatmap)
+library(gplots)
+#library("RColorBrewer")
+#library(heatmap3)
+library(limma)
+#source('http://bioconductor.org/biocLite.R')
+library(edgeR)
+#install.packages("DEseq2") 
+library(DEseq2)
+library(EDASeq)
+
+
+#To add beautiful colors to the heatmap
+#display.brewer.all()
+#Make it for everyone
+#display.brewer.all(colorblindFriendly = TRUE)
+#Define colores chidos
+ylred <-brewer.pal(9,'YlOrRd')
+RedtoBlue <- brewer.pal(11, 'RdYlBu')
+bluechido <- brewer.pal(9, 'Blues')
+
+##To visualize genomic coordinates and annotation information according to Engreitz in RAP-AMT.
+## try http:// if https:// URLs are not supported
+#source("https://bioconductor.org/biocLite.R")
+#biocLite("Gviz")
+
+######################### To Build the pipeline #################################
+############################ T0 CTL ############################################
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CTL.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T0_CTL_plot <-plot(PAN_pos_density,
+     ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+     main = "T0 CTL Pseudo-Seq Peaks",
+     xlab = "PAN RNA",
+     col = 'blue',
+     lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T0 CMC ################################################
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CMC.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T0_CMC_plot <- plot(PAN_pos_density,
+     ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+     main = "T0 CMC Pseudo-Seq Peaks",
+     xlab = "PAN RNA",
+     col = 'blue',
+     lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T1 CTL ################################################
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T1_CTL.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T1_CTL_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T1 CTL Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T1 CMC ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T1_CMC.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T1_CMC_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T1 CMC Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T2 CTL ################################################
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T2_CTL.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T2_CTL_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T2 CTL Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T2 CMC ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T2_CMC.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T2_CMC_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T2 CMC Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+
+######################### T3 CTL ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T3_CTL.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T3_CTL_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T3 CTL Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T3 CMC ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T3_CMC.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T3_CMC_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T3 CMC Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T4 CTL ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T4_CTL.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T4_CTL_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T4 CTL Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+######################### T4 CMC ################################################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T4_CMC.bam")
+names(bam[[1]])
+table(bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+bam_field <- names(bam[[1]])
+list <- lapply(bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+bam_df <- do.call("DataFrame", list)
+names(bam_df) <- bam_field
+dim(bam_df)
+table(bam_df$rname =="PAN" & bam_df$flag ==16)
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+test <- subset(bam_df, rname == 'PAN')
+table(apply(as.data.frame(test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(test$flag), 1, check_pos))
+PAN_neg <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_neg),
+                  'pos']
+length(PAN_neg)
+PAN_pos <- bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                  'pos']
+length(PAN_pos)
+PAN_neg_density <- density(PAN_neg)
+PAN_pos_density <- density(PAN_pos)
+PAN_neg_density$y <- PAN_pos_density$y *-1
+
+T4_CMC_plot <- plot(PAN_pos_density,
+                    ylim = range(c(PAN_neg_density$y, PAN_pos_density$y)),
+                    main = "T4 CMC Pseudo-Seq Peaks",
+                    xlab = "PAN RNA",
+                    col = 'blue',
+                    lwd=2.5)
+lines(PAN_neg_density, lwd=2.5, col = 'red')
+
+
+######################### Start playing with IDs for CMC ########################
+
+bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CMC.bam")
+
+T0_CMC_bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CMC.bam")
+T0_CTL_bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CTL.bam")
+
+names(bam[[1]])
+#names(T0_CMC_bam[[1]])
+
+table(bam[[1]]$flag)
+
+table(T0_CMC_bam[[1]]$flag)
+table(T0_CTL_bam[[1]]$flag)
+
+
+.unlist <- function (x){
+      ## do.call(c, ...) coerces factor to integer, which is undesired
+       x1 <- x[[1L]]
+       if (is.factor(x1)){
+       structure(unlist(x), class = "factor", levels = levels(x1))
+       } else {
+           do.call(c, x)
+     }
+}
+
+T0_CMC_bam_field <- names(T0_CMC_bam[[1]])
+T0_CTL_bam_field <- names(T0_CTL_bam[[1]])
+
+
+T0_CMC_list <- lapply(T0_CMC_bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+T0_CMC_bam_df <- do.call("DataFrame", T0_CMC_list)
+names(T0_CMC_bam_df) <- T0_CMC_bam_field
+
+
+T0_CTL_list <- lapply(T0_CTL_bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+T0_CTL_bam_df <- do.call("DataFrame", T0_CTL_list)
+names(T0_CTL_bam_df) <- T0_CTL_bam_field
+
+
+dim(T0_CTL_bam_df)
+dim(T0_CMC_bam_df)
+
+
+table(T0_CMC_bam_df$rname =="PAN" & T0_CMC_bam_df$flag ==16)
+table(T0_CTL_bam_df$rname =="PAN" & T0_CTL_bam_df$flag ==16)
+
+
+check_neg <- function(x){if (intToBits(x)[5] == 1){
+   return(T)
+  } else {
+     return(F)
+     }}
+T0_CMC_test <- subset(T0_CMC_bam_df, rname == 'PAN')
+table(apply(as.data.frame(T0_CMC_test$flag), 1, check_neg))
+
+T0_CTL_test <- subset(T0_CTL_bam_df, rname == 'PAN')
+table(apply(as.data.frame(T0_CTL_test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+  return(F)
+  } else if (intToBits(x)[5] != 1){
+  return(T)
+  } else {
+  return(F)
+        }
+} 
+
+table(apply(as.data.frame(T0_CMC_test$flag), 1, check_pos))
+table(apply(as.data.frame(T0_CTL_test$flag), 1, check_pos))
+
+T0_CMC_PAN_neg <- T0_CMC_bam_df[bam_df$rname == 'PAN' &
+                    apply(as.data.frame(T0_CMC_bam_df$flag), 1, check_neg),
+                    'pos']
+length(T0_CMC_PAN_neg)
+T0_CMC_PAN_pos <- T0_CMC_bam_df[T0_CMC_bam_df$rname == 'PAN' &
+                    apply(as.data.frame(bam_df$flag), 1, check_pos),
+                    'pos']
+length(T0_CMC_PAN_pos)
+
+T0_CMC_PAN_neg_density <- density(T0_CMC_PAN_neg)
+T0_CMC_PAN_pos_density <- density(T0_CMC_PAN_pos)
+T0_CMC_PAN_neg_density$y <- T0_CMC_PAN_pos_density$y *-1
+
+plot(T0_CMC_PAN_pos_density,
+                     ylim = range(c(T0_CMC_PAN_neg_density$y, T0_CMC_PAN_pos_density$y)),
+                     main = "T0 CMC Pseudo-Seq Peaks",
+                     xlab = "PAN RNA",
+                     col = 'blue',
+                     lwd=2.5)
+lines(T0_CMC_PAN_neg_density, lwd=2.5, col = 'red')
+
+#### Controls BEU Buffer or No-CMC ###
+T0_CTL_bam <-scanBam("/home/chris/Pseudo-Seq/Second_Seq_15M/T0_CTL.bam")
+names(T0_CTL_bam[[1]])
+table(T0_CTL_bam[[1]]$flag)
+.unlist <- function (x){
+  ## do.call(c, ...) coerces factor to integer, which is undesired
+  x1 <- x[[1L]]
+  if (is.factor(x1)){
+    structure(unlist(x), class = "factor", levels = levels(x1))
+  } else {
+    do.call(c, x) }}
+
+T0_CTL_bam_field <- names(T0_CTL_bam[[1]])
+T0_CTL_list <- lapply(T0_CTL_bam_field, function(y) .unlist(lapply(bam, "[[", y)))
+T0_CTL_bam_df <- do.call("DataFrame", T0_CTL_list)
+names(T0_CTL_bam_df) <- T0_CTL_bam_field
+dim(T0_CTL_bam_df)
+table(T0_CTL_bam_df$rname =="PAN" & T0_CTL_bam_df$flag ==16)
+T0_CTL_check_neg <- function(x){if (intToBits(x)[5] == 1){
+  return(T)
+} else {
+  return(F)
+}}
+T0_CTL_test <- subset(T0_CTL_bam_df, rname == 'PAN')
+table(apply(as.data.frame(T0_CTL_test$flag), 1, check_neg))
+
+check_pos <- function(x){
+  if (intToBits(x)[3] == 1){
+    return(F)
+  } else if (intToBits(x)[5] != 1){
+    return(T)
+  } else {
+    return(F)
+  }}
+table(apply(as.data.frame(T0_CTL_test$flag), 1, check_pos))
+T0_CTL_PAN_neg <- T0_CTL_bam_df[bam_df$rname == 'PAN' &
+                                  apply(as.data.frame(T0_CTL_bam_df$flag), 1, check_neg),
+                                'pos']
+length(T0_CTL_PAN_neg)
+T0_CTL_PAN_pos <- T0_CTL_bam_df[T0_CTL_bam_df$rname == 'PAN' &
+                                  apply(as.data.frame(bam_df$flag), 1, check_pos),
+                                'pos']
+
+length(T0_CTL_PAN_pos)
+T0_CTL_PAN_neg_density <- density(T0_CTL_PAN_neg)
+T0_CTL_PAN_pos_density <- density(T0_CTL_PAN_pos)
+T0_CTL_PAN_neg_density$y <- T0_CTL_PAN_pos_density$y *-1
+
+plot(T0_CTL_PAN_pos_density,
+     ylim = range(c(T0_CTL_PAN_neg_density$y, T0_CTL_PAN_pos_density$y)),
+     main = "T0 CTL Pseudo-Seq Peaks",
+     xlab = "PAN RNA",
+     col = 'blue',
+     lwd=2.5)
+lines(T0_CTL_PAN_neg_density, lwd=2.5, col = 'red')
+
+########### Data Normalization #######
+#dataWithin <- withinLaneNormalization(T0_CTL_bam,"gc", which="full")
+
+dataNorm <- betweenLaneNormalization(data, round=FALSE, offset=TRUE)
+norm1 <- normCounts(dataNorm)
+norm2 <- exp(long(counts(dataNorm) + 0.1) + offst(dataNorm)) -0.1
+head(norm1-norm2)
+
+
